@@ -2,6 +2,8 @@
 
 High-performance, lock-free C++26 asynchronous runtime engine in the `async_runtime` namespace. Integrates Linux `io_uring` with `std::execution` (Senders/Receivers) for zero-copy concurrency.
 
+Keep updating this file as the project evolves. This is a living document. Dont add unnecessary comments to the source code. Use this file for design notes, architecture decisions, and TODOs. Keep this file for concise project documentation, and for rarely useful information, instead create a skill using `skill-creator` skill.
+
 ## C++26 Directives
 
 - **Asynchronous Chaining:** Strictly utilize `std::execution` Senders and Receivers. Avoid raw coroutines (`co_await`).
@@ -31,14 +33,13 @@ High-performance, lock-free C++26 asynchronous runtime engine in the `async_runt
 - **Bridge Methods:** `io_context::submit_*` take typed params and callback, allowing Senders to live in headers without including liburing.
 - **Explicit Sender Types:** All `async_*` methods return named nested structs; `auto` deduction fails across translation units.
 - **`exec::start_detached`:** Use `exec::start_detached` from `<exec/start_detached.hpp>`, as `stdexec::start_detached` is deprecated.
-- **Thread Pool Queue:** Mutex queue is currently used; Chase-Lev work-stealing deque has data races with `std::function` and is deferred.
+- **Thread Pool Queue:** Lock-free work-stealing Chase-Lev deque managing pointers to tasks (`std::function<void()>*`) to prevent data races on task objects, plus a mutex-protected global fallback queue for external submissions.
+- **Registered Buffers:** Expose `register_buffers` and `unregister_buffers` using C++ standard types (`std::span` of `std::span<std::byte>`) translated to `iovec` internally. Fixed buffer I/O is exposed via `async_read_fixed` and `async_write_fixed` returning explicit sender types.
+- **Cancellation:** Support cancellation of pending asynchronous I/O requests via `stdexec::stop_token` using the generic `detail::stop_helper` template which coordinates cancellation with `io_uring_prep_cancel` (by cancel SQEs referencing the request's heap-allocated completion callback). Maps `-ECANCELED` to `set_stopped`.
 
 ## Status
 
 Scaffold complete. All targets build and 2/2 tests pass. Run `/build-and-test` to compile and run tests.
 
 **TODO:**
-1. Replace mutex queue with lock-free work-stealing (Concurrency)
-2. Implement `io_uring` registered buffers for true zero-copy (I/O Integration)
-3. Add `stdexec::stop_token` cancellation support
-4. Add `std::hazard_pointer` reclamation when GCC ships it
+1. Add `std::hazard_pointer` reclamation when GCC ships it

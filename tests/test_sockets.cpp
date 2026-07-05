@@ -79,12 +79,15 @@ void test_tcp_loopback() {
 
     int ret = bind(listen_fd, reinterpret_cast<sockaddr *>(&addr), sizeof(addr));
     assert(ret >= 0);
+    (void)ret;
     ret = listen(listen_fd, SOMAXCONN);
     assert(ret >= 0);
+    (void)ret;
 
     socklen_t addr_len = sizeof(addr);
     ret = getsockname(listen_fd, reinterpret_cast<sockaddr *>(&addr), &addr_len);
     assert(ret >= 0);
+    (void)ret;
     port = ntohs(addr.sin_port);
 
     bool accept_completed = false;
@@ -105,8 +108,10 @@ void test_tcp_loopback() {
 
     ret = connect(client_fd, reinterpret_cast<sockaddr *>(&server_addr), sizeof(server_addr));
     assert(ret == 0 || errno == EINPROGRESS);
+    (void)ret;
 
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    (void)deadline;
     while (!accept_completed) {
         assert(std::chrono::steady_clock::now() < deadline);
         std::this_thread::yield();
@@ -169,8 +174,10 @@ void test_socket_cancellation() {
     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     int ret = bind(listen_fd, reinterpret_cast<sockaddr *>(&addr), sizeof(addr));
     assert(ret >= 0);
+    (void)ret;
     ret = listen(listen_fd, SOMAXCONN);
     assert(ret >= 0);
+    (void)ret;
 
     stdexec::inplace_stop_source stop_src;
     bool stopped = false;
@@ -186,6 +193,7 @@ void test_socket_cancellation() {
     stop_src.request_stop();
 
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    (void)deadline;
     while (!completed) {
         assert(std::chrono::steady_clock::now() < deadline);
         std::this_thread::yield();
@@ -213,11 +221,14 @@ void test_recv_cancellation() {
     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     int ret = bind(listen_fd, reinterpret_cast<sockaddr *>(&addr), sizeof(addr));
     assert(ret >= 0);
+    (void)ret;
     ret = listen(listen_fd, SOMAXCONN);
     assert(ret >= 0);
+    (void)ret;
     socklen_t addr_len = sizeof(addr);
     ret = getsockname(listen_fd, reinterpret_cast<sockaddr *>(&addr), &addr_len);
     assert(ret >= 0);
+    (void)ret;
     port = ntohs(addr.sin_port);
 
     bool accept_completed = false;
@@ -237,8 +248,10 @@ void test_recv_cancellation() {
     server_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     ret = connect(client_fd, reinterpret_cast<sockaddr *>(&server_addr), sizeof(server_addr));
     assert(ret == 0 || errno == EINPROGRESS);
+    (void)ret;
 
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    (void)deadline;
     while (!accept_completed) {
         assert(std::chrono::steady_clock::now() < deadline);
         std::this_thread::yield();
@@ -292,6 +305,7 @@ void test_error_handling() {
     stdexec::start(op);
 
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    (void)deadline;
     while (!completed) {
         assert(std::chrono::steady_clock::now() < deadline);
         std::this_thread::yield();

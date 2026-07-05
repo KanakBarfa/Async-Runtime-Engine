@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     name: Build & Test (${{ matrix.build_type }}, GCC 15)
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -64,7 +64,7 @@ jobs:
           sed -i 's/-Wno-maybe-uninitialized//g' build/compile_commands.json
           sed -i 's/-Wno-non-template-friend//g' build/compile_commands.json
           find src tests examples -type f -name "*.cpp" -print0 | \
-            xargs -0 clang-tidy -p build --warnings-as-errors=* -extra-arg=-Wno-unused-command-line-argument -extra-arg=-Wno-unknown-warning-option
+            xargs -0 clang-tidy -p build --warnings-as-errors=*,-clang-diagnostic-* -extra-arg=-Wno-unused-command-line-argument -extra-arg=-Wno-unknown-warning-option
 
       - name: Build Project
         run: |

@@ -43,6 +43,7 @@ void test_standard_io() {
     std::array<int, 2> fds{};
     const int ret = pipe(fds.data());
     assert(ret == 0);
+    (void)ret;
 
     async_runtime::io_context ctx;
     std::thread io_thread{[&ctx] { ctx.run(); }};
@@ -62,6 +63,7 @@ void test_standard_io() {
     exec::start_detached(
         ctx.async_write(fds[1], write_span) | stdexec::then([&](async_runtime::io_result r) {
             assert(r.res >= 0 && static_cast<std::size_t>(r.res) == message.size());
+            (void)r;
             write_done = true;
         }));
 
@@ -69,6 +71,7 @@ void test_standard_io() {
         ctx.async_read(fds[0], read_span) | stdexec::then([&](async_runtime::io_result r) {
             assert(r.res >= 0 && static_cast<std::size_t>(r.res) == message.size());
             assert(std::memcmp(read_buf.data(), message.data(), message.size()) == 0);
+            (void)r;
             read_done = true;
             ctx.stop();
         }));
@@ -87,6 +90,7 @@ void test_fixed_buffers() {
     std::array<int, 2> fds_fixed{};
     const int ret_fixed = pipe(fds_fixed.data());
     assert(ret_fixed == 0);
+    (void)ret_fixed;
 
     async_runtime::io_context ctx_fixed;
 
@@ -100,6 +104,7 @@ void test_fixed_buffers() {
     std::array<std::span<std::byte>, 2> bufs{w_span, r_span};
     auto reg_res = ctx_fixed.register_buffers(bufs);
     assert(reg_res.has_value());
+    (void)reg_res;
 
     std::thread io_thread_fixed{[&ctx_fixed] { ctx_fixed.run(); }};
 
@@ -113,6 +118,7 @@ void test_fixed_buffers() {
                          stdexec::then([&](async_runtime::io_result r) {
                              assert(r.res >= 0 &&
                                     static_cast<std::size_t>(r.res) == message.size());
+                             (void)r;
                              write_done_fixed = true;
                          }));
 
@@ -121,6 +127,7 @@ void test_fixed_buffers() {
         stdexec::then([&](async_runtime::io_result r) {
             assert(r.res >= 0 && static_cast<std::size_t>(r.res) == message.size());
             assert(std::memcmp(read_buf_fixed.data(), message.data(), message.size()) == 0);
+            (void)r;
             read_done_fixed = true;
             ctx_fixed.stop();
         }));
@@ -132,6 +139,7 @@ void test_fixed_buffers() {
 
     auto unreg_res = ctx_fixed.unregister_buffers();
     assert(unreg_res.has_value());
+    (void)unreg_res;
 
     close(fds_fixed[0]);
     close(fds_fixed[1]);
@@ -141,6 +149,7 @@ void test_io_cancellation() {
     std::array<int, 2> fds_cancel{};
     const int ret_cancel = pipe(fds_cancel.data());
     assert(ret_cancel == 0);
+    (void)ret_cancel;
     assert(fcntl(fds_cancel[0], F_SETFL, O_NONBLOCK) == 0);
     assert(fcntl(fds_cancel[1], F_SETFL, O_NONBLOCK) == 0);
 
@@ -163,6 +172,7 @@ void test_io_cancellation() {
     stop_src.request_stop();
 
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    (void)deadline;
     while (!completed) {
         assert(std::chrono::steady_clock::now() < deadline);
         std::this_thread::yield();

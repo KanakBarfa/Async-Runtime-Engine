@@ -22,6 +22,7 @@ int main() {
     }
 
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{10};
+    (void)deadline;
     while (completed.load(std::memory_order_acquire) < task_count) {
         assert(std::chrono::steady_clock::now() < deadline && "thread pool stress test timed out");
         std::this_thread::yield();

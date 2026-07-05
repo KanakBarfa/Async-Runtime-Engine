@@ -1,0 +1,14 @@
+---
+Checks: >
+  modernize-*,
+  performance-*,
+  readability-*,
+  -readability-magic-numbers,
+  -readability-identifier-length,
+  -modernize-use-trailing-return-type
+WarningsAsErrors: ""
+HeaderFilterRegex: "include/async_runtime/.*"
+FormatStyle: file
+CheckOptions:
+  - key: modernize-use-default-member-init.UseAssignment
+    value: "true"

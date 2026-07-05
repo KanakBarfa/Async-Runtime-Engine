@@ -46,3 +46,40 @@ All code generation must strictly adhere to the C++26 standard.
 * `src/`: Private implementation files, internal lock-free structures, and `io_uring` translation layers.
 * `tests/`: Stress tests and memory safety validation.
 * `examples/`: Minimal implementations demonstrating how to embed the engine into a basic socket server using `std::execution`.
+
+## Implementation Notes (Updated 2026-07-05)
+
+### Environment
+
+- **Compiler:** GCC 15.2, C++26
+- **liburing:** 2.14 (via `pkg-config`, `PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig`)
+- **std::execution (P2300):** NOT in GCC 15 stdlib yet. Use **stdexec** (NVIDIA reference impl) via `FetchContent_Declare(stdexec GIT_REPOSITORY https://github.com/NVIDIA/stdexec.git ...)`.
+- **std::hazard_pointer:** NOT in GCC 15 yet. Deferred.
+
+### Build
+
+```bash
+PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig cmake -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build -j$(nproc)
+ctest --test-dir build --output-on-failure
+```
+
+First run fetches stdexec (~8s). Subsequent runs use CMake cache.
+
+### Architecture Decisions
+
+- **Pimpl for liburing:** `io_context` declares `struct ring_impl` in the header, defines it fully in `io_uring_ctx.cpp`. Public headers never include `<liburing.h>`.
+- **Bridge methods:** `io_context::submit_read/write/accept/recv/send` take typed params + `io_callback`. Sender `operation::start()` calls these, so Senders can live in the header without pulling in liburing.
+- **Sender return types must be named:** `auto` return type for `async_*` methods would fail across TU boundaries. Senders are named nested structs (`read_sender`, etc.) and `schedule_sender` is in `scheduler.hpp`.
+- **`exec::start_detached`:** Use `#include <exec/start_detached.hpp>` and `exec::start_detached`. `stdexec::start_detached` is deprecated in stdexec main.
+- **Thread pool:** Current impl uses mutex+condition_variable queue (correct). Lock-free work-stealing deque with `std::function` has data race issues with non-trivially-movable types — deferred.
+
+### Status
+
+Scaffold complete. All targets build and 2/2 tests pass.
+
+**TODO (implementation phase):**
+1. Replace mutex queue with lock-free work-stealing (Concurrency Agent)
+2. Implement `io_uring` registered buffers for true zero-copy (I/O Integration Agent)
+3. Add `stdexec::stop_token` cancellation support
+4. Add `std::hazard_pointer` reclamation when GCC ships it

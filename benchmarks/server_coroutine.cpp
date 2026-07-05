@@ -80,7 +80,8 @@ class CoroutineServer {
         }
 
         exec::start_detached(
-            stdexec::starts_on(stdexec::inline_scheduler{}, accept_loop(listen_fd, *io)));
+            stdexec::starts_on(stdexec::inline_scheduler{}, accept_loop(listen_fd, *io)) |
+            stdexec::upon_error([](auto) {}) | stdexec::upon_stopped([]() {}));
         io->run();
         close(listen_fd);
     }
@@ -114,7 +115,9 @@ class CoroutineServer {
             auto accept_res = co_await io.async_accept(listen_fd);
             if (accept_res.res >= 0) {
                 exec::start_detached(stdexec::starts_on(stdexec::inline_scheduler{},
-                                                        handle_session(accept_res.res, io)));
+                                                        handle_session(accept_res.res, io)) |
+                                     stdexec::upon_error([](auto) {}) |
+                                     stdexec::upon_stopped([]() {}));
             } else {
                 if (accept_res.res == -ECANCELED)
                     break;

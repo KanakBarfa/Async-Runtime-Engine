@@ -1,22 +1,22 @@
+#include <array>
 #include <async_runtime/io_context.hpp>
+#include <atomic>
 #include <exec/start_detached.hpp>
+#include <iostream>
+#include <memory>
 #include <netinet/in.h>
+#include <optional>
+#include <signal.h>
+#include <span>
+#include <stdexcept>
 #include <sys/socket.h>
+#include <system_error>
+#include <thread>
 #include <unistd.h>
 #include <vector>
-#include <thread>
-#include <memory>
-#include <atomic>
-#include <iostream>
-#include <array>
-#include <span>
-#include <signal.h>
-#include <stdexcept>
-#include <system_error>
-#include <optional>
 
 class FixedBufferPool {
-public:
+  public:
     static constexpr size_t BUFFER_SIZE = 128;
     static constexpr size_t NUM_BUFFERS = 64;
 
@@ -48,7 +48,9 @@ public:
         }
     }
 
-    bool is_registered() const noexcept { return registered_; }
+    bool is_registered() const noexcept {
+        return registered_;
+    }
 
     std::optional<unsigned> acquire() {
         if (!registered_ || free_indices_.empty()) {
@@ -69,7 +71,7 @@ public:
         return {memory_.data() + index * BUFFER_SIZE, BUFFER_SIZE};
     }
 
-private:
+  private:
     async_runtime::io_context &io_;
     bool registered_;
     std::vector<std::byte> memory_;
@@ -110,17 +112,23 @@ struct Connection : std::enable_shared_from_this<Connection> {
         auto self = shared_from_this();
         if (buf_index.has_value()) {
             auto read_sender = io->async_read_fixed(fd, *buf_index, buffer);
-            auto handle_read = stdexec::then(std::move(read_sender), [self](async_runtime::io_result res) {
-                if (res.res <= 0) return;
-                self->write_loop(static_cast<size_t>(res.res), 0);
-            });
+            auto handle_read = stdexec::then(std::move(read_sender),
+                                             [self](async_runtime::io_result res) {
+                                                 if (res.res <= 0)
+                                                     return;
+                                                 self->write_loop(static_cast<size_t>(res.res), 0);
+                                             }) |
+                               stdexec::upon_error([](auto) {}) | stdexec::upon_stopped([]() {});
             exec::start_detached(std::move(handle_read));
         } else {
             auto read_sender = io->async_recv(fd, buffer);
-            auto handle_read = stdexec::then(std::move(read_sender), [self](async_runtime::io_result res) {
-                if (res.res <= 0) return;
-                self->write_loop(static_cast<size_t>(res.res), 0);
-            });
+            auto handle_read = stdexec::then(std::move(read_sender),
+                                             [self](async_runtime::io_result res) {
+                                                 if (res.res <= 0)
+                                                     return;
+                                                 self->write_loop(static_cast<size_t>(res.res), 0);
+                                             }) |
+                               stdexec::upon_error([](auto) {}) | stdexec::upon_stopped([]() {});
             exec::start_detached(std::move(handle_read));
         }
     }
@@ -128,61 +136,69 @@ struct Connection : std::enable_shared_from_this<Connection> {
     void write_loop(size_t total_bytes, size_t bytes_sent) {
         auto self = shared_from_this();
         if (buf_index.has_value()) {
-            auto write_sender = io->async_write_fixed(
-                fd,
-                *buf_index,
-                std::span<const std::byte>{self->buffer.data() + bytes_sent, total_bytes - bytes_sent}
-            );
-            auto handle_write = stdexec::then(
-                std::move(write_sender), [self, total_bytes, bytes_sent](async_runtime::io_result res) {
-                    if (res.res <= 0) return;
-                    size_t sent_now = static_cast<size_t>(res.res);
-                    if (bytes_sent + sent_now < total_bytes) {
-                        self->write_loop(total_bytes, bytes_sent + sent_now);
-                    } else {
-                        self->read_loop();
-                    }
-                });
+            auto write_sender =
+                io->async_write_fixed(fd, *buf_index,
+                                      std::span<const std::byte>{self->buffer.data() + bytes_sent,
+                                                                 total_bytes - bytes_sent});
+            auto handle_write =
+                stdexec::then(std::move(write_sender),
+                              [self, total_bytes, bytes_sent](async_runtime::io_result res) {
+                                  if (res.res <= 0)
+                                      return;
+                                  size_t sent_now = static_cast<size_t>(res.res);
+                                  if (bytes_sent + sent_now < total_bytes) {
+                                      self->write_loop(total_bytes, bytes_sent + sent_now);
+                                  } else {
+                                      self->read_loop();
+                                  }
+                              }) |
+                stdexec::upon_error([](auto) {}) | stdexec::upon_stopped([]() {});
             exec::start_detached(std::move(handle_write));
         } else {
-            auto write_sender = io->async_send(
-                fd,
-                std::span<const std::byte>{self->buffer.data() + bytes_sent, total_bytes - bytes_sent}
-            );
-            auto handle_write = stdexec::then(
-                std::move(write_sender), [self, total_bytes, bytes_sent](async_runtime::io_result res) {
-                    if (res.res <= 0) return;
-                    size_t sent_now = static_cast<size_t>(res.res);
-                    if (bytes_sent + sent_now < total_bytes) {
-                        self->write_loop(total_bytes, bytes_sent + sent_now);
-                    } else {
-                        self->read_loop();
-                    }
-                });
+            auto write_sender =
+                io->async_send(fd, std::span<const std::byte>{self->buffer.data() + bytes_sent,
+                                                              total_bytes - bytes_sent});
+            auto handle_write =
+                stdexec::then(std::move(write_sender),
+                              [self, total_bytes, bytes_sent](async_runtime::io_result res) {
+                                  if (res.res <= 0)
+                                      return;
+                                  size_t sent_now = static_cast<size_t>(res.res);
+                                  if (bytes_sent + sent_now < total_bytes) {
+                                      self->write_loop(total_bytes, bytes_sent + sent_now);
+                                  } else {
+                                      self->read_loop();
+                                  }
+                              }) |
+                stdexec::upon_error([](auto) {}) | stdexec::upon_stopped([]() {});
             exec::start_detached(std::move(handle_write));
         }
     }
 };
 
-void run_accept_loop(int listen_fd, async_runtime::io_context &io, FixedBufferPool &pool, std::atomic<bool> &running) {
+void run_accept_loop(int listen_fd, async_runtime::io_context &io, FixedBufferPool &pool,
+                     std::atomic<bool> &running) {
     auto accept_sender = io.async_accept(listen_fd);
 
-    auto handle_accept = stdexec::then(
-        std::move(accept_sender), [listen_fd, &io, &pool, &running](async_runtime::io_result res) {
-            if (!running.load(std::memory_order_relaxed)) {
-                return;
-            }
-            if (res.res >= 0) {
-                try {
-                    auto conn = std::make_shared<Connection>(res.res, &io, &pool);
-                    conn->start_session();
-                } catch (const std::exception &e) {
-                    std::cerr << "Failed to handle connection: " << e.what() << std::endl;
-                    close(res.res);
-                }
-            }
-            run_accept_loop(listen_fd, io, pool, running);
-        });
+    auto handle_accept =
+        stdexec::then(std::move(accept_sender),
+                      [listen_fd, &io, &pool, &running](async_runtime::io_result res) {
+                          if (!running.load(std::memory_order_relaxed)) {
+                              return;
+                          }
+                          if (res.res >= 0) {
+                              try {
+                                  auto conn = std::make_shared<Connection>(res.res, &io, &pool);
+                                  conn->start_session();
+                              } catch (const std::exception &e) {
+                                  std::cerr << "Failed to handle connection: " << e.what()
+                                            << std::endl;
+                                  close(res.res);
+                              }
+                          }
+                          run_accept_loop(listen_fd, io, pool, running);
+                      }) |
+        stdexec::upon_error([](auto) {}) | stdexec::upon_stopped([]() {});
 
     exec::start_detached(std::move(handle_accept));
 }

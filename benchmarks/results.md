@@ -35,3 +35,23 @@ Generated on Sun 05 Jul 2026 08:34:02 PM IST
 | 4000 | async_engine (Sender/Receiver) | 744157 | 5340 | 6311 | 5371.5 |
 | 4000 | async_engine (Fixed Buffers) | 739855 | 5360 | 6742 | 5402.45 |
 | 4000 | Coroutine (exec::task) | 726003 | 5431 | 7178 | 5505.71 |
+
+## 10,000 Connections Sweep Results
+
+| Connections | Server | Throughput (req/sec) | Latency p50 (us) | Latency p99 (us) | Latency Avg (us) |
+|---|---|---|---|---|---|
+| 10000 | Thread-per-Connection | 767351 | 11394 | 25397 | 12422 |
+| 10000 | Event-Driven Epoll | 1.23568e+06 | 7622 | 15898 | 8084.3 |
+| 10000 | async_engine (Sender/Receiver) | 1.02442e+06 | 8954 | 22170 | 9745.72 |
+| 10000 | async_engine (Fixed Buffers) | 949918 | 9663 | 24529 | 10512.1 |
+| 10000 | Coroutine (exec::task) | 955663 | 9627 | 23194 | 10445.9 |
+
+## 20,000 Connections Sweep Results
+
+| Connections | Server | Throughput (req/sec) | Latency p50 (us) | Latency p99 (us) | Latency Avg (us) |
+|---|---|---|---|---|---|
+| 20000 | Thread-per-Connection | 730429 | 23192 | 53920 | 24766.1 |
+| 20000 | Event-Driven Epoll | 1.07505e+06 | 17237 | 29172 | 17906.6 |
+| 20000 | async_engine (Sender/Receiver) | 906775 | 19071 | 45260 | 21098.7 |
+| 20000 | async_engine (Fixed Buffers) | 907870 | 19276 | 44310 | 21013.9 |
+| 20000 | Coroutine (exec::task) | 855679 | 20509 | 45760 | 22274.8 |

@@ -31,13 +31,14 @@ struct Connection : std::enable_shared_from_this<Connection> {
         auto self = shared_from_this();
         auto read_sender = io->async_recv(fd, std::span<std::byte>{buffer});
 
-        auto handle_read =
-            stdexec::then(std::move(read_sender), [self](async_runtime::io_result res) {
-                if (res.res <= 0) {
-                    return;
-                }
-                self->write_loop(static_cast<size_t>(res.res), 0);
-            });
+        auto handle_read = stdexec::then(std::move(read_sender),
+                                         [self](async_runtime::io_result res) {
+                                             if (res.res <= 0) {
+                                                 return;
+                                             }
+                                             self->write_loop(static_cast<size_t>(res.res), 0);
+                                         }) |
+                           stdexec::upon_error([](auto) {}) | stdexec::upon_stopped([]() {});
 
         exec::start_detached(std::move(handle_read));
     }
@@ -48,18 +49,20 @@ struct Connection : std::enable_shared_from_this<Connection> {
             io->async_send(fd, std::span<const std::byte>{self->buffer.data() + bytes_sent,
                                                           total_bytes - bytes_sent});
 
-        auto handle_write = stdexec::then(
-            std::move(write_sender), [self, total_bytes, bytes_sent](async_runtime::io_result res) {
-                if (res.res <= 0) {
-                    return;
-                }
-                size_t sent_now = static_cast<size_t>(res.res);
-                if (bytes_sent + sent_now < total_bytes) {
-                    self->write_loop(total_bytes, bytes_sent + sent_now);
-                } else {
-                    self->read_loop();
-                }
-            });
+        auto handle_write =
+            stdexec::then(std::move(write_sender),
+                          [self, total_bytes, bytes_sent](async_runtime::io_result res) {
+                              if (res.res <= 0) {
+                                  return;
+                              }
+                              size_t sent_now = static_cast<size_t>(res.res);
+                              if (bytes_sent + sent_now < total_bytes) {
+                                  self->write_loop(total_bytes, bytes_sent + sent_now);
+                              } else {
+                                  self->read_loop();
+                              }
+                          }) |
+            stdexec::upon_error([](auto) {}) | stdexec::upon_stopped([]() {});
 
         exec::start_detached(std::move(handle_write));
     }
@@ -68,17 +71,19 @@ struct Connection : std::enable_shared_from_this<Connection> {
 void run_accept_loop(int listen_fd, async_runtime::io_context &io, std::atomic<bool> &running) {
     auto accept_sender = io.async_accept(listen_fd);
 
-    auto handle_accept = stdexec::then(
-        std::move(accept_sender), [listen_fd, &io, &running](async_runtime::io_result res) {
-            if (!running.load(std::memory_order_relaxed)) {
-                return;
-            }
-            if (res.res >= 0) {
-                auto conn = std::make_shared<Connection>(res.res, &io);
-                conn->start_session();
-            }
-            run_accept_loop(listen_fd, io, running);
-        });
+    auto handle_accept = stdexec::then(std::move(accept_sender),
+                                       [listen_fd, &io, &running](async_runtime::io_result res) {
+                                           if (!running.load(std::memory_order_relaxed)) {
+                                               return;
+                                           }
+                                           if (res.res >= 0) {
+                                               auto conn =
+                                                   std::make_shared<Connection>(res.res, &io);
+                                               conn->start_session();
+                                           }
+                                           run_accept_loop(listen_fd, io, running);
+                                       }) |
+                         stdexec::upon_error([](auto) {}) | stdexec::upon_stopped([]() {});
 
     exec::start_detached(std::move(handle_accept));
 }

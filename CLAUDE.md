@@ -26,6 +26,8 @@ Keep updating this file as the project evolves. This is a living document. Dont 
 - **liburing:** 2.14 (PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig)
 - **std::execution (P2300):** NVIDIA stdexec reference implementation (fetched via CMake)
 - **std::hazard_pointer:** Deferred (unsupported in GCC 15 stdlib)
+- **CI/CD Verification:** GitHub Actions builds/tests via GCC 15, checks format via `clang-format`, and lints via `clang-tidy`.
+- **Clang-Tidy CI Workarounds:** Removes `stdexec-src/.clang-tidy`, strips GCC-specific flags from `compile_commands.json`, and invokes `clang-tidy` targeting `libc++` (`-extra-arg=-stdlib=libc++`) to bypass parsing incompatibilities.
 
 ## Architecture Decisions
 
@@ -36,6 +38,9 @@ Keep updating this file as the project evolves. This is a living document. Dont 
 - **Thread Pool Queue:** Lock-free work-stealing Chase-Lev deque managing pointers to tasks (`std::function<void()>*`) to prevent data races on task objects, plus a mutex-protected global fallback queue for external submissions.
 - **Registered Buffers:** Expose `register_buffers` and `unregister_buffers` using C++ standard types (`std::span` of `std::span<std::byte>`) translated to `iovec` internally. Fixed buffer I/O is exposed via `async_read_fixed` and `async_write_fixed` returning explicit sender types.
 - **Cancellation:** Support cancellation of pending asynchronous I/O requests via `stdexec::stop_token` using the generic `detail::stop_helper` template which coordinates cancellation with `io_uring_prep_cancel` (by cancel SQEs referencing the request's heap-allocated completion callback). Maps `-ECANCELED` to `set_stopped`.
+- **C++ Module Scanning:** Disabled scanning via `set(CMAKE_CXX_SCAN_FOR_MODULES OFF)` in CMake to avoid toolchain dependency scanning failures on compiler-specific module flags during CI runs.
+- **Chase-Lev Deque Concurrency:** Implemented `work_stealing_deque` holding pointer-to-task (`std::function<void()>*`) to prevent data races on task object moves during concurrent pop/steal. Uses atomic CAS on `top_` to coordinate concurrent pops and steals on single-element states. Retains resized `circular_array` structures in `history_` for lifetime safety.
+- **Thread Pool Loop:** Worker threads loop: pop local -> pop global -> steal from others. Threads spin-yield 32 times before falling back to wait on a condition variable.
 
 **TODO:**
-1. Add `std::hazard_pointer` reclamation when GCC ships it
+1. Add `std::hazard_pointer` and RCU reclamation when GCC/libstdc++ and Clang/libc++ fully ship `<hazard_pointer>` and `<rcu>` (P2530).

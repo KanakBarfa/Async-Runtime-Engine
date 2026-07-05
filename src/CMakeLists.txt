@@ -14,3 +14,11 @@ target_include_directories(async_runtime_impl
 )
 
 target_compile_options(async_runtime_impl PRIVATE ${LIBURING_CFLAGS_OTHER})
+
+install(TARGETS async_runtime_impl
+    EXPORT async_engineTargets
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+

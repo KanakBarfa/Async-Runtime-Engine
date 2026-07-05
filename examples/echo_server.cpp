@@ -11,10 +11,11 @@
 #include <unistd.h>
 
 static int make_listen_socket(std::uint16_t port) {
-    const int fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
-    if (fd < 0)
+    const auto fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+    if (fd < 0) {
         return -1;
-    int opt = 1;
+    }
+    auto opt = 1;
     setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
     sockaddr_in addr{};
     addr.sin_family = AF_INET;
@@ -33,9 +34,10 @@ static int make_listen_socket(std::uint16_t port) {
 
 int main() {
     constexpr std::uint16_t port = 18080;
-    const int listen_fd = make_listen_socket(port);
-    if (listen_fd < 0)
+    const auto listen_fd = make_listen_socket(port);
+    if (listen_fd < 0) {
         return 1;
+    }
 
     async_runtime::runtime rt;
     auto &io = rt.get_io_context();
@@ -44,9 +46,10 @@ int main() {
 
     exec::start_detached(
         io.async_accept(listen_fd) | stdexec::then([&io](async_runtime::io_result accept_result) {
-            if (accept_result.res < 0)
+            if (accept_result.res < 0) {
                 return;
-            const int client_fd = accept_result.res;
+            }
+            const auto client_fd = accept_result.res;
             static std::array<std::byte, 4096> buf{};
             exec::start_detached(
                 io.async_recv(client_fd, std::span<std::byte>{buf}) |
@@ -55,7 +58,7 @@ int main() {
                         close(client_fd);
                         return;
                     }
-                    const std::size_t n = static_cast<std::size_t>(recv_result.res);
+                    const auto n = static_cast<std::size_t>(recv_result.res);
                     exec::start_detached(
                         io.async_send(client_fd, std::span<const std::byte>{buf.data(), n}) |
                         stdexec::then([client_fd](async_runtime::io_result) { close(client_fd); }));

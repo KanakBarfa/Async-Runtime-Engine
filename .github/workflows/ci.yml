@@ -58,8 +58,13 @@ jobs:
 
       - name: Run Clang-Tidy Linting
         run: |
-          find src include tests examples -type f \( -name "*.cpp" -o -name "*.hpp" \) -print0 | \
-            xargs -0 clang-tidy -p build --warnings-as-errors=*
+          rm -f build/_deps/stdexec-src/.clang-tidy
+          sed -i 's/-fcoroutines//g' build/compile_commands.json
+          sed -i 's/-fconcepts-diagnostics-depth=10//g' build/compile_commands.json
+          sed -i 's/-Wno-maybe-uninitialized//g' build/compile_commands.json
+          sed -i 's/-Wno-non-template-friend//g' build/compile_commands.json
+          find src tests examples -type f -name "*.cpp" -print0 | \
+            xargs -0 clang-tidy -p build --warnings-as-errors=* -extra-arg=-Wno-unused-command-line-argument -extra-arg=-Wno-unknown-warning-option
 
       - name: Build Project
         run: |

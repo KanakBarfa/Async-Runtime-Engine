@@ -108,7 +108,7 @@ class work_stealing_deque {
         return task;
     }
 
-    bool empty() const noexcept {
+    [[nodiscard]] bool empty() const noexcept {
         std::int64_t b = bottom_.load(std::memory_order_acquire);
         std::int64_t t = top_.load(std::memory_order_acquire);
         return b <= t;
@@ -124,12 +124,12 @@ class work_stealing_deque {
 class global_task_queue {
   public:
     void push(std::function<void()> *task) {
-        std::lock_guard lock{mutex_};
+        std::scoped_lock lock{mutex_};
         tasks_.push_back(task);
     }
 
     std::function<void()> *pop_nonblocking() {
-        std::lock_guard lock{mutex_};
+        std::scoped_lock lock{mutex_};
         if (tasks_.empty()) {
             return nullptr;
         }
@@ -139,7 +139,7 @@ class global_task_queue {
     }
 
     bool empty_relaxed() const {
-        std::lock_guard lock{mutex_};
+        std::scoped_lock lock{mutex_};
         return tasks_.empty();
     }
 
@@ -181,12 +181,13 @@ struct thread_pool::impl {
     ~impl() {
         stop.store(true, std::memory_order_release);
         {
-            std::lock_guard lock{mutex};
+            std::scoped_lock lock{mutex};
             cv.notify_all();
         }
         for (auto &w : workers) {
-            if (w.joinable())
+            if (w.joinable()) {
                 w.join();
+            }
         }
     }
 
@@ -199,12 +200,12 @@ struct thread_pool::impl {
         }
 
         if (sleeping_workers.load(std::memory_order_relaxed) > 0) {
-            std::lock_guard lock{mutex};
+            std::scoped_lock lock{mutex};
             cv.notify_one();
         }
     }
 
-    bool empty() const {
+    [[nodiscard]] bool empty() const {
         if (!global_queue.empty_relaxed()) {
             return false;
         }
@@ -218,8 +219,9 @@ struct thread_pool::impl {
 
     std::function<void()> *steal_from_others(std::size_t worker_id) {
         std::size_t num_workers = deques.size();
-        if (num_workers <= 1)
+        if (num_workers <= 1) {
             return nullptr;
+        }
 
         static thread_local std::uint32_t rng_state = static_cast<std::uint32_t>(worker_id) + 1;
         rng_state ^= rng_state << 13;
@@ -229,8 +231,9 @@ struct thread_pool::impl {
 
         for (std::size_t i = 0; i < num_workers; ++i) {
             std::size_t target = (start_index + i) % num_workers;
-            if (target == worker_id)
+            if (target == worker_id) {
                 continue;
+            }
             if (auto *task = deques[target]->steal()) {
                 return task;
             }
@@ -244,15 +247,15 @@ struct thread_pool::impl {
         while (true) {
             std::function<void()> *task = local_queue->pop();
 
-            if (!task) {
+            if (task == nullptr) {
                 task = global_queue.pop_nonblocking();
             }
 
-            if (!task) {
+            if (task == nullptr) {
                 task = steal_from_others(worker_id);
             }
 
-            if (task) {
+            if (task != nullptr) {
                 std::unique_ptr<std::function<void()>> task_ptr{task};
                 (*task_ptr)();
                 continue;
@@ -266,12 +269,12 @@ struct thread_pool::impl {
             for (int spin = 0; spin < 32; ++spin) {
                 std::this_thread::yield();
                 task = global_queue.pop_nonblocking();
-                if (task) {
+                if (task != nullptr) {
                     found = true;
                     break;
                 }
                 task = steal_from_others(worker_id);
-                if (task) {
+                if (task != nullptr) {
                     found = true;
                     break;
                 }
@@ -303,10 +306,11 @@ struct thread_pool::impl {
         }
     }
 
-    bool has_local_work() const {
+    [[nodiscard]] bool has_local_work() const {
         for (const auto &deque : deques) {
-            if (!deque->empty())
+            if (!deque->empty()) {
                 return true;
+            }
         }
         return false;
     }

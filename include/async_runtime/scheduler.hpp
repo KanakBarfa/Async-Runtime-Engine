@@ -47,7 +47,7 @@ struct schedule_sender {
         }
     };
 
-    template <stdexec::receiver Receiver> auto connect(Receiver r) const noexcept {
+    template <stdexec::receiver Receiver> [[nodiscard]] auto connect(Receiver r) const noexcept {
         return operation<Receiver>{pool, std::move(r)};
     }
 };
@@ -56,7 +56,7 @@ class thread_pool_scheduler {
   public:
     explicit thread_pool_scheduler(thread_pool &pool) noexcept : pool_{&pool} {}
 
-    schedule_sender schedule() const noexcept {
+    [[nodiscard]] schedule_sender schedule() const noexcept {
         return schedule_sender{pool_};
     }
 

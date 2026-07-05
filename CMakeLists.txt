@@ -31,6 +31,7 @@ add_subdirectory(include)
 add_subdirectory(src)
 add_subdirectory(tests)
 add_subdirectory(examples)
+add_subdirectory(benchmarks)
 
 # Package Configuration generation
 set(CONFIG_TEMPLATE [=[

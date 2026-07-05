@@ -31,6 +31,8 @@ jobs:
             liburing-dev \
             clang-format \
             clang-tidy \
+            libc++-dev \
+            libc++abi-dev \
             ccache
 
       - name: Configure ccache
@@ -64,7 +66,10 @@ jobs:
           sed -i 's/-Wno-maybe-uninitialized//g' build/compile_commands.json
           sed -i 's/-Wno-non-template-friend//g' build/compile_commands.json
           find src tests examples -type f -name "*.cpp" -print0 | \
-            xargs -0 clang-tidy -p build --warnings-as-errors=*,-clang-diagnostic-* -extra-arg=-Wno-unused-command-line-argument -extra-arg=-Wno-unknown-warning-option
+            xargs -0 clang-tidy -p build --warnings-as-errors=*,-clang-diagnostic-* \
+              -extra-arg=-stdlib=libc++ \
+              -extra-arg=-Wno-unused-command-line-argument \
+              -extra-arg=-Wno-unknown-warning-option
 
       - name: Build Project
         run: |

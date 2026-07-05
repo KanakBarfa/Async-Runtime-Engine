@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Build & Test (${{ matrix.build_type }}, GCC 15)
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Debug, Release]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup GCC 15 and Dependencies
+        run: |
+          sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+          sudo apt-get update
+          sudo apt-get install -y \
+            gcc-15 \
+            g++-15 \
+            cmake \
+            ninja-build \
+            liburing-dev \
+            clang-format \
+            clang-tidy \
+            ccache
+
+      - name: Configure ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-${{ matrix.build_type }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ matrix.build_type }}-
+
+      - name: Check Code Formatting
+        run: |
+          find src include tests examples -type f \( -name "*.cpp" -o -name "*.hpp" \) -print0 | \
+            xargs -0 clang-format --dry-run --Werror
+
+      - name: Configure CMake
+        run: |
+          cmake -B build -S . \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DCMAKE_C_COMPILER=gcc-15 \
+            -DCMAKE_CXX_COMPILER=g++-15 \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Run Clang-Tidy Linting
+        run: |
+          find src include tests examples -type f \( -name "*.cpp" -o -name "*.hpp" \) -print0 | \
+            xargs -0 clang-tidy -p build --warnings-as-errors=*
+
+      - name: Build Project
+        run: |
+          cmake --build build --config ${{ matrix.build_type }}
+
+      - name: Run Tests
+        working-directory: build
+        run: |
+          ctest --output-on-failure

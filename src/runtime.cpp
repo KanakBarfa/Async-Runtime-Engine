@@ -13,7 +13,7 @@ thread_pool_scheduler runtime::get_scheduler() noexcept {
     return pool_.get_scheduler();
 }
 
-io_context& runtime::get_io_context() noexcept {
+io_context &runtime::get_io_context() noexcept {
     return io_ctx_;
 }
 

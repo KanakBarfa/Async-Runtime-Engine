@@ -37,9 +37,5 @@ Keep updating this file as the project evolves. This is a living document. Dont 
 - **Registered Buffers:** Expose `register_buffers` and `unregister_buffers` using C++ standard types (`std::span` of `std::span<std::byte>`) translated to `iovec` internally. Fixed buffer I/O is exposed via `async_read_fixed` and `async_write_fixed` returning explicit sender types.
 - **Cancellation:** Support cancellation of pending asynchronous I/O requests via `stdexec::stop_token` using the generic `detail::stop_helper` template which coordinates cancellation with `io_uring_prep_cancel` (by cancel SQEs referencing the request's heap-allocated completion callback). Maps `-ECANCELED` to `set_stopped`.
 
-## Status
-
-Scaffold complete. All targets build and 2/2 tests pass. Run `/build-and-test` to compile and run tests.
-
 **TODO:**
 1. Add `std::hazard_pointer` reclamation when GCC ships it

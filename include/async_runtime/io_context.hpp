@@ -98,7 +98,8 @@ class io_context {
             }
         };
 
-        template <stdexec::receiver Receiver> auto connect(Receiver r) const noexcept {
+        template <stdexec::receiver Receiver>
+        [[nodiscard]] auto connect(Receiver r) const noexcept {
             return operation<Receiver>{ctx, fd, buf, offset, std::move(r)};
         }
     };
@@ -131,7 +132,8 @@ class io_context {
             }
         };
 
-        template <stdexec::receiver Receiver> auto connect(Receiver r) const noexcept {
+        template <stdexec::receiver Receiver>
+        [[nodiscard]] auto connect(Receiver r) const noexcept {
             return operation<Receiver>{ctx, fd, buf, offset, std::move(r)};
         }
     };
@@ -158,7 +160,8 @@ class io_context {
             }
         };
 
-        template <stdexec::receiver Receiver> auto connect(Receiver r) const noexcept {
+        template <stdexec::receiver Receiver>
+        [[nodiscard]] auto connect(Receiver r) const noexcept {
             return operation<Receiver>{ctx, fd, std::move(r)};
         }
     };
@@ -190,7 +193,8 @@ class io_context {
             }
         };
 
-        template <stdexec::receiver Receiver> auto connect(Receiver r) const noexcept {
+        template <stdexec::receiver Receiver>
+        [[nodiscard]] auto connect(Receiver r) const noexcept {
             return operation<Receiver>{ctx, fd, buf, flags, std::move(r)};
         }
     };
@@ -222,7 +226,8 @@ class io_context {
             }
         };
 
-        template <stdexec::receiver Receiver> auto connect(Receiver r) const noexcept {
+        template <stdexec::receiver Receiver>
+        [[nodiscard]] auto connect(Receiver r) const noexcept {
             return operation<Receiver>{ctx, fd, buf, flags, std::move(r)};
         }
     };
@@ -269,7 +274,8 @@ class io_context {
             }
         };
 
-        template <stdexec::receiver Receiver> auto connect(Receiver r) const noexcept {
+        template <stdexec::receiver Receiver>
+        [[nodiscard]] auto connect(Receiver r) const noexcept {
             return operation<Receiver>{ctx, fd, buf_index, buf, offset, std::move(r)};
         }
     };
@@ -305,7 +311,8 @@ class io_context {
             }
         };
 
-        template <stdexec::receiver Receiver> auto connect(Receiver r) const noexcept {
+        template <stdexec::receiver Receiver>
+        [[nodiscard]] auto connect(Receiver r) const noexcept {
             return operation<Receiver>{ctx, fd, buf_index, buf, offset, std::move(r)};
         }
     };

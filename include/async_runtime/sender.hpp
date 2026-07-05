@@ -1,15 +1,14 @@
 #pragma once
 
-#include <stdexec/execution.hpp>
 #include <expected>
+#include <stdexec/execution.hpp>
 #include <system_error>
 
 namespace async_runtime {
 
 namespace ex = stdexec;
 
-template <typename T>
-using Result = std::expected<T, std::error_code>;
+template <typename T> using Result = std::expected<T, std::error_code>;
 
 template <typename Sender>
 concept AsyncSender = ex::sender<Sender>;
